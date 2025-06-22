@@ -1,0 +1,6 @@
+@GymTracker.UserService_HostAddress = http://localhost:5229
+
+GET {{GymTracker.UserService_HostAddress}}/weatherforecast/
+Accept: application/json
+
+###
