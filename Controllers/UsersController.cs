@@ -1,6 +1,6 @@
 ﻿using Microsoft.AspNetCore.Mvc;
-using GymTracker.UserService.Models;
-using GymTracker.UserService.Services;
+using GymTracker.UserService.DTOs;
+using GymTracker.UserService.Interfaces;
 
 namespace GymTracker.UserService.Controllers;
 
@@ -10,23 +10,26 @@ public class UsersController : ControllerBase
 {
     private readonly IUserService _userService;
 
-    // Dependency Injection - קבלת UserService במקום DbContext ישירות
     public UsersController(IUserService userService)
     {
         _userService = userService;
     }
 
-    // קבלת כל המשתמשים
+    /// <summary>
+    /// Get all active users
+    /// </summary>
     [HttpGet]
-    public async Task<ActionResult<List<User>>> GetAllUsers()
+    public async Task<ActionResult<List<UserResponseDto>>> GetAllUsers()
     {
         var users = await _userService.GetAllUsersAsync();
         return Ok(users);
     }
 
-    // קבלת משתמש לפי ID
+    /// <summary>
+    /// Get user by ID
+    /// </summary>
     [HttpGet("{id}")]
-    public async Task<ActionResult<User>> GetUser(Guid id)
+    public async Task<ActionResult<UserResponseDto>> GetUser(Guid id)
     {
         var user = await _userService.GetUserByIdAsync(id);
         if (user == null)
@@ -35,26 +38,38 @@ public class UsersController : ControllerBase
         return Ok(user);
     }
 
-    // יצירת משתמש חדש
+    /// <summary>
+    /// Create new user
+    /// </summary>
     [HttpPost]
-    public async Task<ActionResult<User>> CreateUser(User user)
+    public async Task<ActionResult<UserResponseDto>> CreateUser(CreateUserDto createUserDto)
     {
-        var createdUser = await _userService.CreateUserAsync(user);
-        return CreatedAtAction(nameof(GetUser), new { id = createdUser.Id }, createdUser);
+        if (!ModelState.IsValid)
+            return BadRequest(ModelState);
+
+        var user = await _userService.CreateUserAsync(createUserDto);
+        return CreatedAtAction(nameof(GetUser), new { id = user.Id }, user);
     }
 
-    // עדכון משתמש
+    /// <summary>
+    /// Update existing user
+    /// </summary>
     [HttpPut("{id}")]
-    public async Task<ActionResult<User>> UpdateUser(Guid id, User user)
+    public async Task<ActionResult<UserResponseDto>> UpdateUser(Guid id, UpdateUserDto updateUserDto)
     {
-        var updatedUser = await _userService.UpdateUserAsync(id, user);
-        if (updatedUser == null)
+        if (!ModelState.IsValid)
+            return BadRequest(ModelState);
+
+        var user = await _userService.UpdateUserAsync(id, updateUserDto);
+        if (user == null)
             return NotFound($"User with ID {id} not found");
 
-        return Ok(updatedUser);
+        return Ok(user);
     }
 
-    // מחיקת משתמש
+    /// <summary>
+    /// Delete user (soft delete)
+    /// </summary>
     [HttpDelete("{id}")]
     public async Task<ActionResult> DeleteUser(Guid id)
     {
@@ -62,7 +77,7 @@ public class UsersController : ControllerBase
         if (!deleted)
             return NotFound($"User with ID {id} not found");
 
-        return NoContent(); // 204 - מחיקה בהצלחה
+        return NoContent();
     }
 
     [HttpGet("health")]

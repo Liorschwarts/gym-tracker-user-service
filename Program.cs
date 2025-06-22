@@ -1,6 +1,7 @@
 ﻿using Microsoft.EntityFrameworkCore;
 using GymTracker.UserService.Data;
-using GymTracker.UserService.Services;  // ← הוסף את זה
+using GymTracker.UserService.Services;
+using GymTracker.UserService.Interfaces;  
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -15,7 +16,9 @@ builder.Services.AddSwaggerGen();
 builder.Services.AddDbContext<UserDbContext>(options =>
     options.UseNpgsql(builder.Configuration.GetConnectionString("DefaultConnection")));
 
- builder.Services.AddScoped<IUserService, UserService>();
+// רישום UserService עם Interface מעודכן
+builder.Services.AddScoped<IUserService, GymTracker.UserService.Services.UserService>();
+//                        ↑ Interface      ↑ Implementation עם namespace מלא
 
 var app = builder.Build();
 

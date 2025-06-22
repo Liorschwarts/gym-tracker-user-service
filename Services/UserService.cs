@@ -1,90 +1,112 @@
 ﻿using GymTracker.UserService.Data;
 using GymTracker.UserService.Models;
+using GymTracker.UserService.DTOs;
+using GymTracker.UserService.Interfaces;
 using Microsoft.EntityFrameworkCore;
 
 namespace GymTracker.UserService.Services;
 
-// Interface - חוזה של מה הService יעשה
-public interface IUserService
-{
-    Task<List<User>> GetAllUsersAsync();
-    Task<User?> GetUserByIdAsync(Guid id);
-    Task<User?> GetUserByEmailAsync(string email);
-    Task<User> CreateUserAsync(User user);
-    Task<User?> UpdateUserAsync(Guid id, User user);
-    Task<bool> DeleteUserAsync(Guid id);
-}
-
-// Implementation - איך בפועל הService עובד
+// Implementation של IUserService
 public class UserService : IUserService
 {
     private readonly UserDbContext _context;
 
-    // Dependency Injection - קבלת הDbContext
     public UserService(UserDbContext context)
     {
         _context = context;
     }
 
-    // קבלת כל המשתמשים
-    public async Task<List<User>> GetAllUsersAsync()
+    public async Task<List<UserResponseDto>> GetAllUsersAsync()
     {
-        return await _context.Users
-            .Where(u => u.IsActive)  // רק משתמשים פעילים
+        var users = await _context.Users
+            .Where(u => u.IsActive)
             .ToListAsync();
+
+        return users.Select(ToResponseDto).ToList();
     }
 
-    // קבלת משתמש לפי ID
-    public async Task<User?> GetUserByIdAsync(Guid id)
+    public async Task<UserResponseDto?> GetUserByIdAsync(Guid id)
     {
-        return await _context.Users
+        var user = await _context.Users
             .FirstOrDefaultAsync(u => u.Id == id && u.IsActive);
+
+        return user == null ? null : ToResponseDto(user);
     }
 
-    // קבלת משתמש לפי Email (לlogin)
-    public async Task<User?> GetUserByEmailAsync(string email)
+    public async Task<UserResponseDto?> GetUserByEmailAsync(string email)
     {
-        return await _context.Users
+        var user = await _context.Users
             .FirstOrDefaultAsync(u => u.Email == email && u.IsActive);
+
+        return user == null ? null : ToResponseDto(user);
     }
 
-    // יצירת משתמש חדש
-    public async Task<User> CreateUserAsync(User user)
+    public async Task<UserResponseDto> CreateUserAsync(CreateUserDto createUserDto)
     {
-        user.Id = Guid.NewGuid();
-        user.CreatedAt = DateTime.UtcNow;
-        user.UpdatedAt = DateTime.UtcNow;
+        var user = new User
+        {
+            Id = Guid.NewGuid(),
+            Email = createUserDto.Email,
+            PasswordHash = HashPassword(createUserDto.Password), // נוסיף hashing מאוחר יותר
+            FirstName = createUserDto.FirstName,
+            LastName = createUserDto.LastName,
+            CreatedAt = DateTime.UtcNow,
+            UpdatedAt = DateTime.UtcNow,
+            IsActive = true
+        };
 
         _context.Users.Add(user);
         await _context.SaveChangesAsync();
 
-        return user;
+        return ToResponseDto(user);
     }
 
-    // עדכון משתמש
-    public async Task<User?> UpdateUserAsync(Guid id, User user)
+    public async Task<UserResponseDto?> UpdateUserAsync(Guid id, UpdateUserDto updateUserDto)
     {
-        var existingUser = await GetUserByIdAsync(id);
-        if (existingUser == null) return null;
+        var user = await _context.Users
+            .FirstOrDefaultAsync(u => u.Id == id && u.IsActive);
 
-        existingUser.FirstName = user.FirstName;
-        existingUser.LastName = user.LastName;
-        existingUser.UpdatedAt = DateTime.UtcNow;
+        if (user == null) return null;
+
+        user.FirstName = updateUserDto.FirstName;
+        user.LastName = updateUserDto.LastName;
+        user.UpdatedAt = DateTime.UtcNow;
 
         await _context.SaveChangesAsync();
-        return existingUser;
+        return ToResponseDto(user);
     }
 
-    // מחיקת משתמש (Soft Delete)
     public async Task<bool> DeleteUserAsync(Guid id)
     {
-        var user = await GetUserByIdAsync(id);
+        var user = await _context.Users
+            .FirstOrDefaultAsync(u => u.Id == id && u.IsActive);
+
         if (user == null) return false;
 
-        user.IsActive = false;  // לא באמת מוחק, רק מסמן כלא פעיל
+        user.IsActive = false;
         user.UpdatedAt = DateTime.UtcNow;
 
         await _context.SaveChangesAsync();
         return true;
     }
-}
+
+    // Helper method - המרה מUser לUserResponseDto
+    private static UserResponseDto ToResponseDto(User user)
+    {
+        return new UserResponseDto
+        {
+            Id = user.Id,
+            Email = user.Email,
+            FirstName = user.FirstName,
+            LastName = user.LastName,
+            CreatedAt = user.CreatedAt
+        };
+    }
+
+    // Helper method - hashing זמני (נשפר מאוחר יותר)
+    private static string HashPassword(string password)
+    {
+        // TODO: השתמש בBCrypt או Argon2
+        return password + "_hashed"; // זמני בלבד!
+    }
+}   
