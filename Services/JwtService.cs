@@ -13,6 +13,7 @@ public class JwtService : IJwtService
     private readonly string _secretKey;
     private readonly string _issuer;
     private readonly string _audience;
+    private readonly int _expirationHours;
 
     public JwtService(IConfiguration configuration)
     {
@@ -20,6 +21,7 @@ public class JwtService : IJwtService
         _secretKey = _configuration["Jwt:SecretKey"] ?? throw new InvalidOperationException("JWT Secret Key not configured");
         _issuer = _configuration["Jwt:Issuer"] ?? "GymTracker.UserService";
         _audience = _configuration["Jwt:Audience"] ?? "GymTracker.Users";
+        _expirationHours = _configuration.GetValue<int>("Jwt:ExpirationHours", 24);
     }
 
     public string GenerateToken(UserResponseDto user)
@@ -39,7 +41,7 @@ public class JwtService : IJwtService
         var tokenDescriptor = new SecurityTokenDescriptor
         {
             Subject = new ClaimsIdentity(claims),
-            Expires = DateTime.UtcNow.AddHours(24), // Token תקף ל-24 שעות
+            Expires = DateTime.UtcNow.AddHours(_expirationHours),
             Issuer = _issuer,
             Audience = _audience,
             SigningCredentials = new SigningCredentials(new SymmetricSecurityKey(key), SecurityAlgorithms.HmacSha256Signature)

@@ -2,9 +2,12 @@
 
 namespace GymTracker.UserService.DTOs;
 
-// DTO לעדכון משתמש - רק שדות שמותר לעדכן
 public class UpdateUserDto
 {
+    [EmailAddress(ErrorMessage = "Invalid email format")]
+    [MaxLength(256, ErrorMessage = "Email cannot exceed 256 characters")]
+    public string? Email { get; set; }
+
     [Required(ErrorMessage = "First name is required")]
     [MaxLength(50, ErrorMessage = "First name cannot exceed 50 characters")]
     public string FirstName { get; set; } = string.Empty;

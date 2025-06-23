@@ -11,13 +11,11 @@ public class UserService : IUserService
 {
     private readonly UserDbContext _context;
     private readonly IJwtService _jwtService;
-    private readonly ILogger<UserService> _logger;
 
-    public UserService(UserDbContext context, IJwtService jwtService, ILogger<UserService> logger)
+    public UserService(UserDbContext context, IJwtService jwtService)
     {
         _context = context;
         _jwtService = jwtService;
-        _logger = logger;
     }
 
     public async Task<List<UserResponseDto>> GetAllUsersAsync()
@@ -57,7 +55,7 @@ public class UserService : IUserService
         {
             Id = Guid.NewGuid(),
             Email = createUserDto.Email,
-            PasswordHash = HashPassword(createUserDto.Password),
+            PasswordHash = UserPasswordService.HashPassword(createUserDto.Password),
             FirstName = createUserDto.FirstName,
             LastName = createUserDto.LastName,
             CreatedAt = DateTime.UtcNow,
@@ -76,7 +74,8 @@ public class UserService : IUserService
         var user = await _context.Users
             .FirstOrDefaultAsync(u => u.Id == id && u.IsActive);
 
-        if (user == null) return null;
+        if (user == null)
+            throw new UserNotFoundException(id);
 
         user.FirstName = updateUserDto.FirstName;
         user.LastName = updateUserDto.LastName;
@@ -104,7 +103,7 @@ public class UserService : IUserService
         var user = await _context.Users
             .FirstOrDefaultAsync(u => u.Email == loginDto.Email && u.IsActive);
 
-        if (user == null || !VerifyPassword(loginDto.Password, user.PasswordHash))
+        if (user == null || !UserPasswordService.VerifyPassword(loginDto.Password, user.PasswordHash))
             return null;
 
         var userDto = ToResponseDto(user);
@@ -127,10 +126,4 @@ public class UserService : IUserService
             LastName = user.LastName,
             CreatedAt = user.CreatedAt
         };
-
-    private static string HashPassword(string password) =>
-        BCrypt.Net.BCrypt.HashPassword(password, 12);
-
-    private static bool VerifyPassword(string password, string hash) =>
-        BCrypt.Net.BCrypt.Verify(password, hash);
 }

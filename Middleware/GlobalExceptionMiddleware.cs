@@ -1,5 +1,6 @@
 ﻿using System.Net;
 using System.Text.Json;
+using GymTracker.UserService.Exceptions;
 
 namespace GymTracker.UserService.Middleware;
 
@@ -35,19 +36,11 @@ public class GlobalExceptionMiddleware
 
         object errorResponse = new
         {
-            Message = "An error occurred",
-            Details = exception.Message,
+            Message = GetErrorMessage(exception),
             Timestamp = DateTime.UtcNow
         };
 
-        response.StatusCode = exception switch
-        {
-            ArgumentException => (int)HttpStatusCode.BadRequest,
-            UnauthorizedAccessException => (int)HttpStatusCode.Unauthorized,
-            KeyNotFoundException => (int)HttpStatusCode.NotFound,
-            InvalidOperationException => (int)HttpStatusCode.Conflict,
-            _ => (int)HttpStatusCode.InternalServerError
-        };
+        response.StatusCode = GetStatusCode(exception);
 
         if (response.StatusCode == 500)
         {
@@ -57,4 +50,22 @@ public class GlobalExceptionMiddleware
         var jsonResponse = JsonSerializer.Serialize(errorResponse);
         await response.WriteAsync(jsonResponse);
     }
+
+    private static int GetStatusCode(Exception exception) => exception switch
+    {
+        UserAlreadyExistsException => (int)HttpStatusCode.Conflict,
+        UserNotFoundException => (int)HttpStatusCode.NotFound,
+        InvalidCredentialsException => (int)HttpStatusCode.Unauthorized,
+        ArgumentException => (int)HttpStatusCode.BadRequest,
+        UnauthorizedAccessException => (int)HttpStatusCode.Unauthorized,
+        KeyNotFoundException => (int)HttpStatusCode.NotFound,
+        _ => (int)HttpStatusCode.InternalServerError
+    };
+
+    private static string GetErrorMessage(Exception exception) => exception switch
+    {
+        UserAlreadyExistsException or UserNotFoundException or InvalidCredentialsException => exception.Message,
+        ArgumentException => exception.Message,
+        _ => "An error occurred"
+    };
 }

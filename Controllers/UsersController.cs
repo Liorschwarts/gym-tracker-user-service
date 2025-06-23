@@ -1,7 +1,6 @@
 ﻿using Microsoft.AspNetCore.Mvc;
 using GymTracker.UserService.DTOs;
 using GymTracker.UserService.Interfaces;
-using GymTracker.UserService.Exceptions;
 
 namespace GymTracker.UserService.Controllers;
 
@@ -36,30 +35,14 @@ public class UsersController : ControllerBase
     [HttpPost]
     public async Task<ActionResult<UserResponseDto>> CreateUser(CreateUserDto createUserDto)
     {
-        if (!ModelState.IsValid)
-            return BadRequest(ModelState);
-
-        try
-        {
-            var user = await _userService.CreateUserAsync(createUserDto);
-            return CreatedAtAction(nameof(GetUser), new { id = user.Id }, user);
-        }
-        catch (UserAlreadyExistsException ex)
-        {
-            return Conflict(ex.Message);
-        }
+        var user = await _userService.CreateUserAsync(createUserDto);
+        return CreatedAtAction(nameof(GetUser), new { id = user.Id }, user);
     }
 
     [HttpPut("{id}")]
     public async Task<ActionResult<UserResponseDto>> UpdateUser(Guid id, UpdateUserDto updateUserDto)
     {
-        if (!ModelState.IsValid)
-            return BadRequest(ModelState);
-
         var user = await _userService.UpdateUserAsync(id, updateUserDto);
-        if (user == null)
-            return NotFound($"User with ID {id} not found");
-
         return Ok(user);
     }
 
@@ -76,9 +59,6 @@ public class UsersController : ControllerBase
     [HttpPost("login")]
     public async Task<ActionResult<LoginResponseDto>> Login(LoginDto loginDto)
     {
-        if (!ModelState.IsValid)
-            return BadRequest(ModelState);
-
         var result = await _userService.LoginAsync(loginDto);
         if (result == null)
             return Unauthorized("Invalid email or password");
