@@ -404,3 +404,20 @@ FodyWeavers.xsd
 
 # JetBrains Rider
 *.sln.iml
+
+
+# ===== SECRETS - NEVER COMMIT =====
+.env
+.env.local
+.env.production
+.env.staging
+secrets.json
+appsettings.Production.json
+appsettings.Staging.json
+
+# User secrets directory
+**/secrets/
+
+# Logs from Serilog
+logs/
+*.log

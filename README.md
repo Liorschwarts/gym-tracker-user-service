@@ -1,41 +1,48 @@
-﻿# Gym Tracker - User Service
+﻿# 🏋️ GymTracker - User Service
 
 ## 🎯 Overview
-Microservice for user management and authentication in the Gym Tracker application.
+Production-ready microservice for user management and authentication in the GymTracker application.
 
 ## 🛠️ Tech Stack
-- **Framework:** ASP.NET Core 8
-- **Database:** PostgreSQL
+- **Framework:** ASP.NET Core 9.0
+- **Database:** PostgreSQL 15+
 - **ORM:** Entity Framework Core
-- **Architecture:** Clean Architecture
-- **API Documentation:** Swagger
+- **Authentication:** JWT Tokens
+- **Password Hashing:** BCrypt
+- **Logging:** Serilog
+- **API Documentation:** Swagger/OpenAPI
 
 ## 🚀 Features
-- ✅ User CRUD operations
-- ✅ Clean Architecture (Controllers, Services, Models, Data)
-- ✅ PostgreSQL integration
-- ✅ Entity Framework migrations
-- ✅ Swagger API documentation
-- ✅ Dependency Injection
+- ✅ User CRUD operations with soft delete
+- ✅ JWT-based authentication
+- ✅ Email uniqueness validation
+- ✅ Password strength validation with BCrypt
+- ✅ Global exception handling
+- ✅ Health checks
+- ✅ Comprehensive logging with Serilog
+- ✅ Clean Architecture (Controllers, Services, Models, DTOs)
+- ✅ Production-ready configuration
 
-## 📁 Project Structure
-├── Controllers/        # API endpoints
-├── Services/          # Business logic
-├── Models/            # Domain entities
-├── Data/              # Database context
-└── Migrations/        # Database migrations
+## 🏗️ Architecture
+├── Controllers/         # API endpoints
+├── Services/           # Business logic
+├── Models/             # Domain entities
+├── DTOs/               # Data transfer objects
+├── Data/               # Database context
+├── Exceptions/         # Custom exceptions
+├── Middleware/         # Global middleware
+├── Attributes/         # Custom attributes
+└── Migrations/         # Database migrations
 
-## 🔧 Setup Instructions
-1. Install PostgreSQL
-2. Update connection string in `appsettings.json`
-3. Run migrations: `dotnet ef database update`
-4. Start application: `dotnet run`
-5. Access Swagger: `https://localhost:xxxx/swagger`
+## 🚀 Quick Start
 
-## 📋 API Endpoints
-- `GET /api/users` - Get all users
-- `GET /api/users/{id}` - Get user by ID
-- `POST /api/users` - Create new user
-- `PUT /api/users/{id}` - Update user
-- `DELETE /api/users/{id}` - Delete user
-- `GET /api/users/health` - Health check
+### Prerequisites
+- .NET 9.0 SDK
+- PostgreSQL 15+
+- (Optional) Docker
+
+### Installation
+1. **Clone the repository:**
+   ```bash
+   git clone <your-repo-url>
+   cd GymTracker.UserService

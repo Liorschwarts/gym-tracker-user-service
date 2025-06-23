@@ -22,6 +22,7 @@ public class UserService : IUserService
     {
         var users = await _context.Users
             .Where(u => u.IsActive)
+            .OrderBy(u => u.CreatedAt)
             .ToListAsync();
 
         return users.Select(ToResponseDto).ToList();
@@ -38,15 +39,17 @@ public class UserService : IUserService
     public async Task<UserResponseDto?> GetUserByEmailAsync(string email)
     {
         var user = await _context.Users
-            .FirstOrDefaultAsync(u => u.Email == email && u.IsActive);
+            .FirstOrDefaultAsync(u => u.Email == email.ToLowerInvariant() && u.IsActive);
 
         return user == null ? null : ToResponseDto(user);
     }
 
     public async Task<UserResponseDto> CreateUserAsync(CreateUserDto createUserDto)
     {
+        var normalizedEmail = createUserDto.Email.ToLowerInvariant();
+
         var existingUser = await _context.Users
-            .FirstOrDefaultAsync(u => u.Email == createUserDto.Email);
+            .FirstOrDefaultAsync(u => u.Email == normalizedEmail);
 
         if (existingUser != null)
             throw new UserAlreadyExistsException(createUserDto.Email);
@@ -54,10 +57,10 @@ public class UserService : IUserService
         var user = new User
         {
             Id = Guid.NewGuid(),
-            Email = createUserDto.Email,
+            Email = normalizedEmail,
             PasswordHash = UserPasswordService.HashPassword(createUserDto.Password),
-            FirstName = createUserDto.FirstName,
-            LastName = createUserDto.LastName,
+            FirstName = createUserDto.FirstName.Trim(),
+            LastName = createUserDto.LastName.Trim(),
             CreatedAt = DateTime.UtcNow,
             UpdatedAt = DateTime.UtcNow,
             IsActive = true
@@ -77,8 +80,21 @@ public class UserService : IUserService
         if (user == null)
             throw new UserNotFoundException(id);
 
-        user.FirstName = updateUserDto.FirstName;
-        user.LastName = updateUserDto.LastName;
+        // Check email uniqueness if email is being updated
+        if (!string.IsNullOrEmpty(updateUserDto.Email))
+        {
+            var normalizedEmail = updateUserDto.Email.ToLowerInvariant();
+            var existingUser = await _context.Users
+                .FirstOrDefaultAsync(u => u.Email == normalizedEmail && u.Id != id);
+
+            if (existingUser != null)
+                throw new UserAlreadyExistsException(updateUserDto.Email);
+
+            user.Email = normalizedEmail;
+        }
+
+        user.FirstName = updateUserDto.FirstName.Trim();
+        user.LastName = updateUserDto.LastName.Trim();
         user.UpdatedAt = DateTime.UtcNow;
 
         await _context.SaveChangesAsync();
@@ -100,8 +116,10 @@ public class UserService : IUserService
 
     public async Task<LoginResponseDto?> LoginAsync(LoginDto loginDto)
     {
+        var normalizedEmail = loginDto.Email.ToLowerInvariant();
+
         var user = await _context.Users
-            .FirstOrDefaultAsync(u => u.Email == loginDto.Email && u.IsActive);
+            .FirstOrDefaultAsync(u => u.Email == normalizedEmail && u.IsActive);
 
         if (user == null || !UserPasswordService.VerifyPassword(loginDto.Password, user.PasswordHash))
             return null;
