@@ -10,10 +10,12 @@ namespace GymTracker.UserService.Services;
 public class UserService : IUserService
 {
     private readonly UserDbContext _context;
+    private readonly IJwtService _jwtService;  
 
-    public UserService(UserDbContext context)
+    public UserService(UserDbContext context, IJwtService jwtService)
     {
         _context = context;
+        _jwtService = jwtService; 
     }
 
     public async Task<List<UserResponseDto>> GetAllUsersAsync()
@@ -90,6 +92,32 @@ public class UserService : IUserService
         return true;
     }
 
+    public async Task<LoginResponseDto?> LoginAsync(LoginDto loginDto)
+    {
+        // חפש משתמש לפי אימייל
+        var user = await _context.Users
+            .FirstOrDefaultAsync(u => u.Email == loginDto.Email && u.IsActive);
+
+        // אם אין משתמש או סיסמה שגויה
+        if (user == null || !VerifyPassword(loginDto.Password, user.PasswordHash))
+        {
+            return null;  // Login failed
+        }
+
+        // המר לDTO
+        var userDto = ToResponseDto(user);
+
+        // יצור JWT token אמיתי
+        var token = _jwtService.GenerateToken(userDto);
+
+        return new LoginResponseDto
+        {
+            Token = token,  // ← Token אמיתי!
+            User = userDto,
+            ExpiresAt = DateTime.UtcNow.AddHours(24)
+        };
+    }
+
     // Helper method - המרה מUser לUserResponseDto
     private static UserResponseDto ToResponseDto(User user)
     {
@@ -103,10 +131,14 @@ public class UserService : IUserService
         };
     }
 
-    // Helper method - hashing זמני (נשפר מאוחר יותר)
     private static string HashPassword(string password)
     {
-        // TODO: השתמש בBCrypt או Argon2
-        return password + "_hashed"; // זמני בלבד!
+        // BCrypt עם cost factor 12 (בטוח אבל לא איטי מדי)
+        return BCrypt.Net.BCrypt.HashPassword(password, 12);
+    }
+
+    private static bool VerifyPassword(string password, string hash)
+    {
+        return BCrypt.Net.BCrypt.Verify(password, hash);
     }
 }   

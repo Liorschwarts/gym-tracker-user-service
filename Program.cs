@@ -19,6 +19,8 @@ builder.Services.AddDbContext<UserDbContext>(options =>
 // רישום UserService עם Interface מעודכן
 builder.Services.AddScoped<IUserService, GymTracker.UserService.Services.UserService>();
 //                        ↑ Interface      ↑ Implementation עם namespace מלא
+builder.Services.AddScoped<IJwtService, JwtService>(); 
+
 
 var app = builder.Build();
 

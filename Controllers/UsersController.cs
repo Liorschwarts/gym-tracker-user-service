@@ -80,6 +80,23 @@ public class UsersController : ControllerBase
         return NoContent();
     }
 
+    /// <summary>
+    /// User login with email and password
+    /// </summary>
+    [HttpPost("login")]
+    public async Task<ActionResult<LoginResponseDto>> Login(LoginDto loginDto)
+    {
+        if (!ModelState.IsValid)
+            return BadRequest(ModelState);
+
+        var result = await _userService.LoginAsync(loginDto);
+
+        if (result == null)
+            return Unauthorized("Invalid email or password");
+
+        return Ok(result);
+    }
+
     [HttpGet("health")]
     public ActionResult<string> HealthCheck()
     {

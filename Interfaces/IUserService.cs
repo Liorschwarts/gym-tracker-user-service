@@ -10,5 +10,6 @@ namespace GymTracker.UserService.Interfaces
         Task<UserResponseDto> CreateUserAsync(CreateUserDto createUserDto);  
         Task<UserResponseDto?> UpdateUserAsync(Guid id, UpdateUserDto updateUserDto); 
         Task<bool> DeleteUserAsync(Guid id);
+        Task<LoginResponseDto?> LoginAsync(LoginDto loginDto);
     }
 }
