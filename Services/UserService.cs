@@ -2,20 +2,22 @@
 using GymTracker.UserService.Models;
 using GymTracker.UserService.DTOs;
 using GymTracker.UserService.Interfaces;
+using GymTracker.UserService.Exceptions;
 using Microsoft.EntityFrameworkCore;
 
 namespace GymTracker.UserService.Services;
 
-// Implementation של IUserService
 public class UserService : IUserService
 {
     private readonly UserDbContext _context;
-    private readonly IJwtService _jwtService;  
+    private readonly IJwtService _jwtService;
+    private readonly ILogger<UserService> _logger;
 
-    public UserService(UserDbContext context, IJwtService jwtService)
+    public UserService(UserDbContext context, IJwtService jwtService, ILogger<UserService> logger)
     {
         _context = context;
-        _jwtService = jwtService; 
+        _jwtService = jwtService;
+        _logger = logger;
     }
 
     public async Task<List<UserResponseDto>> GetAllUsersAsync()
@@ -45,11 +47,17 @@ public class UserService : IUserService
 
     public async Task<UserResponseDto> CreateUserAsync(CreateUserDto createUserDto)
     {
+        var existingUser = await _context.Users
+            .FirstOrDefaultAsync(u => u.Email == createUserDto.Email);
+
+        if (existingUser != null)
+            throw new UserAlreadyExistsException(createUserDto.Email);
+
         var user = new User
         {
             Id = Guid.NewGuid(),
             Email = createUserDto.Email,
-            PasswordHash = HashPassword(createUserDto.Password), // נוסיף hashing מאוחר יותר
+            PasswordHash = HashPassword(createUserDto.Password),
             FirstName = createUserDto.FirstName,
             LastName = createUserDto.LastName,
             CreatedAt = DateTime.UtcNow,
@@ -87,41 +95,31 @@ public class UserService : IUserService
 
         user.IsActive = false;
         user.UpdatedAt = DateTime.UtcNow;
-
         await _context.SaveChangesAsync();
         return true;
     }
 
     public async Task<LoginResponseDto?> LoginAsync(LoginDto loginDto)
     {
-        // חפש משתמש לפי אימייל
         var user = await _context.Users
             .FirstOrDefaultAsync(u => u.Email == loginDto.Email && u.IsActive);
 
-        // אם אין משתמש או סיסמה שגויה
         if (user == null || !VerifyPassword(loginDto.Password, user.PasswordHash))
-        {
-            return null;  // Login failed
-        }
+            return null;
 
-        // המר לDTO
         var userDto = ToResponseDto(user);
-
-        // יצור JWT token אמיתי
         var token = _jwtService.GenerateToken(userDto);
 
         return new LoginResponseDto
         {
-            Token = token,  // ← Token אמיתי!
+            Token = token,
             User = userDto,
             ExpiresAt = DateTime.UtcNow.AddHours(24)
         };
     }
 
-    // Helper method - המרה מUser לUserResponseDto
-    private static UserResponseDto ToResponseDto(User user)
-    {
-        return new UserResponseDto
+    private static UserResponseDto ToResponseDto(User user) =>
+        new()
         {
             Id = user.Id,
             Email = user.Email,
@@ -129,16 +127,10 @@ public class UserService : IUserService
             LastName = user.LastName,
             CreatedAt = user.CreatedAt
         };
-    }
 
-    private static string HashPassword(string password)
-    {
-        // BCrypt עם cost factor 12 (בטוח אבל לא איטי מדי)
-        return BCrypt.Net.BCrypt.HashPassword(password, 12);
-    }
+    private static string HashPassword(string password) =>
+        BCrypt.Net.BCrypt.HashPassword(password, 12);
 
-    private static bool VerifyPassword(string password, string hash)
-    {
-        return BCrypt.Net.BCrypt.Verify(password, hash);
-    }
-}   
+    private static bool VerifyPassword(string password, string hash) =>
+        BCrypt.Net.BCrypt.Verify(password, hash);
+}

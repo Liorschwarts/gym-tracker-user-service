@@ -1,6 +1,7 @@
 ﻿using Microsoft.AspNetCore.Mvc;
 using GymTracker.UserService.DTOs;
 using GymTracker.UserService.Interfaces;
+using GymTracker.UserService.Exceptions;
 
 namespace GymTracker.UserService.Controllers;
 
@@ -15,9 +16,6 @@ public class UsersController : ControllerBase
         _userService = userService;
     }
 
-    /// <summary>
-    /// Get all active users
-    /// </summary>
     [HttpGet]
     public async Task<ActionResult<List<UserResponseDto>>> GetAllUsers()
     {
@@ -25,9 +23,6 @@ public class UsersController : ControllerBase
         return Ok(users);
     }
 
-    /// <summary>
-    /// Get user by ID
-    /// </summary>
     [HttpGet("{id}")]
     public async Task<ActionResult<UserResponseDto>> GetUser(Guid id)
     {
@@ -38,22 +33,23 @@ public class UsersController : ControllerBase
         return Ok(user);
     }
 
-    /// <summary>
-    /// Create new user
-    /// </summary>
     [HttpPost]
     public async Task<ActionResult<UserResponseDto>> CreateUser(CreateUserDto createUserDto)
     {
         if (!ModelState.IsValid)
             return BadRequest(ModelState);
 
-        var user = await _userService.CreateUserAsync(createUserDto);
-        return CreatedAtAction(nameof(GetUser), new { id = user.Id }, user);
+        try
+        {
+            var user = await _userService.CreateUserAsync(createUserDto);
+            return CreatedAtAction(nameof(GetUser), new { id = user.Id }, user);
+        }
+        catch (UserAlreadyExistsException ex)
+        {
+            return Conflict(ex.Message);
+        }
     }
 
-    /// <summary>
-    /// Update existing user
-    /// </summary>
     [HttpPut("{id}")]
     public async Task<ActionResult<UserResponseDto>> UpdateUser(Guid id, UpdateUserDto updateUserDto)
     {
@@ -67,9 +63,6 @@ public class UsersController : ControllerBase
         return Ok(user);
     }
 
-    /// <summary>
-    /// Delete user (soft delete)
-    /// </summary>
     [HttpDelete("{id}")]
     public async Task<ActionResult> DeleteUser(Guid id)
     {
@@ -80,9 +73,6 @@ public class UsersController : ControllerBase
         return NoContent();
     }
 
-    /// <summary>
-    /// User login with email and password
-    /// </summary>
     [HttpPost("login")]
     public async Task<ActionResult<LoginResponseDto>> Login(LoginDto loginDto)
     {
@@ -90,7 +80,6 @@ public class UsersController : ControllerBase
             return BadRequest(ModelState);
 
         var result = await _userService.LoginAsync(loginDto);
-
         if (result == null)
             return Unauthorized("Invalid email or password");
 
@@ -98,8 +87,8 @@ public class UsersController : ControllerBase
     }
 
     [HttpGet("health")]
-    public ActionResult<string> HealthCheck()
+    public ActionResult<object> HealthCheck()
     {
-        return Ok("User Service is healthy");
+        return Ok(new { Status = "Healthy", Timestamp = DateTime.UtcNow });
     }
 }
