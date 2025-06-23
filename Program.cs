@@ -1,9 +1,11 @@
-﻿using Microsoft.EntityFrameworkCore;
-using GymTracker.UserService.Data;
-using GymTracker.UserService.Services;
+﻿using GymTracker.UserService.Data;
 using GymTracker.UserService.Interfaces;
 using GymTracker.UserService.Middleware;
+using GymTracker.UserService.Services;
+using Microsoft.AspNetCore.RateLimiting;
+using Microsoft.EntityFrameworkCore;
 using Serilog;
+using System.Threading.RateLimiting;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -35,18 +37,19 @@ builder.Services.AddSwaggerGen(c =>
 });
 
 // Database Configuration with fallbacks
-var connectionString = builder.Configuration.GetConnectionString("DefaultConnection");
+var connectionString = Environment.GetEnvironmentVariable("DATABASE_CONNECTION_STRING")
+                    ?? builder.Configuration.GetConnectionString("DefaultConnection");
 
 if (string.IsNullOrEmpty(connectionString))
 {
     if (builder.Environment.IsDevelopment())
     {
         connectionString = "Host=localhost;Database=GymTrackerDB;Username=postgres;Password=dev123";
-        Log.Information("Using default development database connection");
+        Log.Warning("Using fallback development database connection - consider using environment variables");
     }
     else
     {
-        throw new InvalidOperationException("Database connection string is required for production");
+        throw new InvalidOperationException("DATABASE_CONNECTION_STRING environment variable is required for production");
     }
 }
 
@@ -54,20 +57,21 @@ builder.Services.AddDbContext<UserDbContext>(options =>
     options.UseNpgsql(connectionString));
 
 // JWT Configuration with fallbacks
-var jwtSecretKey = builder.Configuration["Jwt:SecretKey"];
+var jwtSecretKey = Environment.GetEnvironmentVariable("JWT_SECRET_KEY")
+                ?? builder.Configuration["Jwt:SecretKey"];
+
 if (string.IsNullOrEmpty(jwtSecretKey))
 {
     if (builder.Environment.IsDevelopment())
     {
         jwtSecretKey = "Development-JWT-Secret-Key-For-Local-Team-32-Characters-Long-Only";
-        Log.Information("Using default development JWT secret");
+        Log.Warning("Using fallback development JWT secret - consider using environment variables");
     }
     else
     {
-        throw new InvalidOperationException("JWT Secret Key is required for production");
+        throw new InvalidOperationException("JWT_SECRET_KEY environment variable is required for production");
     }
 }
-
 // Register services
 builder.Services.AddScoped<IUserService, GymTracker.UserService.Services.UserService>();
 builder.Services.AddScoped<IJwtService, JwtService>();
@@ -80,6 +84,26 @@ builder.Services.AddCors(options =>
         policy.AllowAnyOrigin()
               .AllowAnyMethod()
               .AllowAnyHeader();
+    });
+});
+
+// Add Rate Limiting
+builder.Services.AddRateLimiter(options =>
+{
+    // Rate limit עבור login attempts
+    options.AddFixedWindowLimiter("LoginPolicy", opt =>
+    {
+        opt.PermitLimit = 5; // 5 נסיונות
+        opt.Window = TimeSpan.FromMinutes(1); // לדקה
+        opt.QueueProcessingOrder = QueueProcessingOrder.OldestFirst;
+        opt.QueueLimit = 0; // אין queue - block מיד
+    });
+
+    // Global rate limit
+    options.AddFixedWindowLimiter("GlobalPolicy", opt =>
+    {
+        opt.PermitLimit = 100; // 100 requests
+        opt.Window = TimeSpan.FromMinutes(1); // לדקה
     });
 });
 
@@ -120,6 +144,7 @@ if (app.Environment.IsDevelopment())
 
 app.UseHttpsRedirection();
 app.UseCors("AllowAll");
+app.UseRateLimiter();
 
 // Add Health Checks endpoint
 app.MapHealthChecks("/health");

@@ -1,7 +1,8 @@
-﻿using Microsoft.AspNetCore.Mvc;
+﻿using GymTracker.UserService.Attributes;
 using GymTracker.UserService.DTOs;
 using GymTracker.UserService.Interfaces;
-using GymTracker.UserService.Attributes;
+using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.RateLimiting;
 
 namespace GymTracker.UserService.Controllers;
 
@@ -89,6 +90,7 @@ public class UsersController : ControllerBase
     /// User login
     /// </summary>
     [HttpPost("login")]
+    [EnableRateLimiting("LoginPolicy")]
     [ValidateModel]
     [ProducesResponseType(typeof(LoginResponseDto), 200)]
     [ProducesResponseType(400)]
