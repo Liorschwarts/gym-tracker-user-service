@@ -72,7 +72,7 @@ public class UserService : IUserService
         return ToResponseDto(user);
     }
 
-    public async Task<UserResponseDto?> UpdateUserAsync(Guid id, UpdateUserDto updateUserDto)
+    public async Task<UserResponseDto> UpdateUserAsync(Guid id, UpdateUserDto updateUserDto)
     {
         var user = await _context.Users
             .FirstOrDefaultAsync(u => u.Id == id && u.IsActive);
