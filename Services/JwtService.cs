@@ -18,7 +18,9 @@ public class JwtService : IJwtService
     public JwtService(IConfiguration configuration)
     {
         _configuration = configuration;
-        _secretKey = _configuration["Jwt:SecretKey"] ?? throw new InvalidOperationException("JWT Secret Key not configured");
+        _secretKey = Environment.GetEnvironmentVariable("JWT_SECRET_KEY")
+                     ?? _configuration["Jwt:SecretKey"] 
+                     ?? throw new InvalidOperationException("JWT Secret Key not configured");
         _issuer = _configuration["Jwt:Issuer"] ?? "GymTracker.UserService";
         _audience = _configuration["Jwt:Audience"] ?? "GymTracker.Users";
         _expirationHours = _configuration.GetValue<int>("Jwt:ExpirationHours", 24);

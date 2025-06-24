@@ -51,6 +51,7 @@ public class UsersController : ControllerBase
     [ProducesResponseType(typeof(UserResponseDto), 201)]
     [ProducesResponseType(400)]
     [ProducesResponseType(409)]
+    [ProducesResponseType(422)]
     public async Task<ActionResult<UserResponseDto>> CreateUser(CreateUserDto createUserDto)
     {
         var user = await _userService.CreateUserAsync(createUserDto);
@@ -95,6 +96,7 @@ public class UsersController : ControllerBase
     [ProducesResponseType(typeof(LoginResponseDto), 200)]
     [ProducesResponseType(400)]
     [ProducesResponseType(401)]
+    [ProducesResponseType(429)]
     public async Task<ActionResult<LoginResponseDto>> Login(LoginDto loginDto)
     {
         var result = await _userService.LoginAsync(loginDto);

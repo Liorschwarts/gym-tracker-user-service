@@ -18,8 +18,12 @@ public static class UserPasswordService
 
     public static bool IsValidPassword(string password) =>
         !string.IsNullOrWhiteSpace(password) &&
-        password.Length >= 6 &&
-        password.Length <= 100;
+        password.Length >= 8 &&                              // 8+ characters
+        password.Length <= 100 &&
+        password.Any(char.IsLower) &&                        // Has lowercase
+        password.Any(char.IsUpper) &&                        // Has uppercase  
+        password.Any(char.IsDigit) &&                        // Has digit
+        password.Any(c => "@$!%*?&".Contains(c));
 
     private static void ValidatePassword(string password)
     {
